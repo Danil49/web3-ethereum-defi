@@ -14,9 +14,9 @@ def decode_data(data: str) -> list[bytes]:
         entries.append(b[i : i + 32])
     return entries
 
-
+"""
 def decode_data_V3(data: str) -> list[bytes]:
-    """Split data of a log to int256, int256, uint160, uint128, int24 results"""
+    #Split data of a log to int256, int256, uint160, uint128, int24 results
     b = bytes.fromhex(data[2:])
     entries = []
     # Define the lengths of each data type in bytes
@@ -27,6 +27,7 @@ def decode_data_V3(data: str) -> list[bytes]:
         entries.append(b[start_index: start_index + length])
         start_index += length
     return entries
+"""
 
 
 def convert_uint256_bytes_to_address(raw: bytes | HexBytes) -> ChecksumAddress:

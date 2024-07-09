@@ -339,7 +339,7 @@ def extract_events_concurrent(
     return events
 
 
-def prepare_filter(events: List[ContractEvent]) -> Filter:
+def prepare_filter(contract_address: Optional[str | List[str]], events: List[ContractEvent]) -> Filter:
     """Creates internal filter to match contract events."""
 
     # Construct our bloom filter
@@ -354,7 +354,7 @@ def prepare_filter(events: List[ContractEvent]) -> Filter:
             # TODO: Confirm correct usage of bloom filter for topics
             bloom.add(bytes.fromhex(signature[2:]))
 
-    filter = Filter(topics, bloom)
+    filter = Filter(topics=topics, bloom=bloom, contract_address=contract_address)
 
     return filter
 
