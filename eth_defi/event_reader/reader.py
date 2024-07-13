@@ -198,6 +198,7 @@ def extract_events(
     context: Optional[LogContext] = None,
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     reorg_mon: Optional[ReorganisationMonitor] = None,
+    tx_receipt: bool = False,
 ) -> Iterable[LogResult]:
     """Perform eth_getLogs call over a block range.
 
@@ -272,6 +273,14 @@ def extract_events(
             # Retrofit our information to the dict
             event_signature = log["topics"][0]
 
+            # last block in range should be confirmed, but we check
+            if len(log["transactionHash"]) == 0:
+                print("transactionHash is null because its pending log")
+                continue
+            if log["removed"] is True:
+                print("removed is True, the log was removed, due to a chain reorganization")
+                continue
+
             if isinstance(log, AttributeDict):
                 # The following code is not going to work, because AttributeDict magic
                 raise RuntimeError("web3.py AttributeDict middleware detected. Please remove it with web3.middleware_onion.remove('attrdict') or from web3.provider.middleware list before attempting to read events")
@@ -313,6 +322,9 @@ def extract_events(
                     # the caller must do the timestamp resolution themselves
                     log["timestamp"] = None
 
+            if tx_receipt:
+                log["tx_receipt"] = web3.eth.get_transaction_receipt(log["transactionHash"])
+
             yield log
 
 
@@ -322,6 +334,7 @@ def extract_events_concurrent(
     filter: Filter,
     context: Optional[LogContext] = None,
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
+    tx_receipt: bool = False,
 ) -> List[LogResult]:
     """Concurrency happy event extractor.
 
@@ -335,7 +348,7 @@ def extract_events_concurrent(
     logger.debug("Starting block scan %d - %d at thread %d for %d different events", start_block, end_block, threading.get_ident(), len(filter.topics))
     web3 = get_worker_web3()
     assert web3 is not None
-    events = list(extract_events(web3, start_block, end_block, filter, context, extract_timestamps))
+    events = list(extract_events(web3, start_block, end_block, filter, context, extract_timestamps, tx_receipt=tx_receipt))
     return events
 
 
@@ -370,6 +383,7 @@ def read_events(
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     filter: Optional[Filter] = None,
     reorg_mon: Optional[ReorganisationMonitor] = None,
+    tx_receipt: bool = False,
 ) -> Iterable[LogResult]:
     """Reads multiple events from the blockchain.
 
@@ -535,6 +549,7 @@ def read_events(
             context,
             extract_timestamps,
             reorg_mon,
+            tx_receipt,
         ):
             last_timestamp = event.get("timestamp")
             total_events += 1
@@ -559,6 +574,7 @@ def read_events_concurrent(
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     filter: Optional[Filter] = None,
     reorg_mon: Optional[ReorganisationMonitor] = None,
+    tx_receipt: bool = False,
 ) -> Iterable[LogResult]:
     """Reads multiple events from the blockchain parallel using a thread pool for IO.
 
@@ -683,6 +699,7 @@ def read_events_concurrent(
             filter,
             context,
             extract_timestamps,
+            tx_receipt,
         )
 
     # Run all tasks and handle backpressure. Task manager
