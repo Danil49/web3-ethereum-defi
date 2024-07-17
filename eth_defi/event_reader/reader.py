@@ -198,7 +198,7 @@ def extract_events(
     context: Optional[LogContext] = None,
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     reorg_mon: Optional[ReorganisationMonitor] = None,
-    tx_receipt: bool = False,
+    transaction_data: bool = False,
 ) -> Iterable[LogResult]:
     """Perform eth_getLogs call over a block range.
 
@@ -322,8 +322,8 @@ def extract_events(
                     # the caller must do the timestamp resolution themselves
                     log["timestamp"] = None
 
-            if tx_receipt:
-                log["tx_receipt"] = web3.eth.get_transaction_receipt(log["transactionHash"])
+            if transaction_data:
+                log["transaction_data"] = web3.eth.get_transaction(log["transactionHash"])
 
             yield log
 
@@ -334,7 +334,7 @@ def extract_events_concurrent(
     filter: Filter,
     context: Optional[LogContext] = None,
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
-    tx_receipt: bool = False,
+    transaction_data: bool = False,
 ) -> List[LogResult]:
     """Concurrency happy event extractor.
 
@@ -348,7 +348,7 @@ def extract_events_concurrent(
     logger.debug("Starting block scan %d - %d at thread %d for %d different events", start_block, end_block, threading.get_ident(), len(filter.topics))
     web3 = get_worker_web3()
     assert web3 is not None
-    events = list(extract_events(web3, start_block, end_block, filter, context, extract_timestamps, tx_receipt=tx_receipt))
+    events = list(extract_events(web3, start_block, end_block, filter, context, extract_timestamps, transaction_data=transaction_data))
     return events
 
 
@@ -383,7 +383,7 @@ def read_events(
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     filter: Optional[Filter] = None,
     reorg_mon: Optional[ReorganisationMonitor] = None,
-    tx_receipt: bool = False,
+    transaction_data: bool = False,
 ) -> Iterable[LogResult]:
     """Reads multiple events from the blockchain.
 
@@ -549,7 +549,7 @@ def read_events(
             context,
             extract_timestamps,
             reorg_mon,
-            tx_receipt,
+            transaction_data,
         ):
             last_timestamp = event.get("timestamp")
             total_events += 1
@@ -574,7 +574,7 @@ def read_events_concurrent(
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     filter: Optional[Filter] = None,
     reorg_mon: Optional[ReorganisationMonitor] = None,
-    tx_receipt: bool = False,
+    transaction_data: bool = False,
 ) -> Iterable[LogResult]:
     """Reads multiple events from the blockchain parallel using a thread pool for IO.
 
@@ -699,7 +699,7 @@ def read_events_concurrent(
             filter,
             context,
             extract_timestamps,
-            tx_receipt,
+            transaction_data,
         )
 
     # Run all tasks and handle backpressure. Task manager

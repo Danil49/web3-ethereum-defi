@@ -57,6 +57,12 @@ class PoolDetails:
         else:
             return raw_price / Decimal(10 ** (self.token1.decimals - self.token0.decimals))
 
+    def get_token_details(self, token_address: str) -> TokenDetails:
+        if token_address == self.token0.address:
+            return self.token0
+        elif token_address == self.token1.address:
+            return self.token1
+
 
 def fetch_pool_details(web3, pool_contact_address: Union[str, HexAddress]) -> PoolDetails:
     """Resolve Uniswap v3 pool information."""

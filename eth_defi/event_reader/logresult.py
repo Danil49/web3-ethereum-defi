@@ -5,7 +5,7 @@ from typing import TypedDict, List, Optional
 from eth_utils import hexstr_if_str, to_bytes
 from web3._utils.events import get_event_data
 from web3.contract.contract import ContractEvent
-from web3.types import EventData, TxReceipt
+from web3.types import EventData, TxData
 
 
 class LogContext:
@@ -108,7 +108,7 @@ class LogResult(TypedDict):
     data: str
 
     #: Receipt of the transaction where event occured
-    tx_receipt: Optional[TxReceipt]
+    transaction_data: Optional[TxData]
 
 def decode_log(evt: LogResult) -> EventData:
     """Decodes a single raw log result using the attached ABI.
