@@ -323,7 +323,10 @@ def extract_events(
                     log["timestamp"] = None
 
             if transaction_data:
-                log["transaction_data"] = web3.eth.get_transaction(log["transactionHash"])
+                try:
+                    log["transaction_data"] = web3.eth.get_transaction(log["transactionHash"])
+                except web3.exceptions.TransactionNotFound as error:
+                    logger.error(error, exc_info=True, stack_info=True)
 
             yield log
 
