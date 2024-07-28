@@ -1,7 +1,7 @@
 """Uniswap v3 pool data."""
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Union
+from typing import Union, Optional
 
 from eth_typing import HexAddress
 from web3 import Web3
