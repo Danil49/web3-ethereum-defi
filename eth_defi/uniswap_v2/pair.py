@@ -160,13 +160,45 @@ class PairDetails:
         return self.convert_price_to_human(reserve0, reserve1, self.reverse_token_order)
 
 
+@dataclass(frozen=True, slots=True)
+class PairDetailsCutted:
+    """Uniswap v2 trading pair info.
+    Cutted version
+    """
+    contract_address: HexAddress
+
+    token0_address: HexAddress
+
+    token1_address: HexAddress
+
+    reverse_token_order: Optional[bool] = None
+
+    def __eq__(self, other):
+        """Implemented for set()"""
+        assert isinstance(other, PairDetails)
+        return self.address == other.address
+
+    def __hash__(self) -> int:
+        """Implemented for set()"""
+        return int(self.address, 16)
+
+    def __repr__(self):
+        return f"<Pair {self.get_base_token().symbol}-{self.get_quote_token().symbol} at {self.address}>"
+
+    @property
+    def checksum_free_address(self) -> str:
+        """Get pair contract address, all lowercase."""
+        return self.contract_address.lower()
+
+
 def fetch_pair_details(
     web3,
     pair_contact_address: Union[str, HexAddress],
     reverse_token_order: Optional[bool] = None,
     base_token_address: Optional[str] = None,
     quote_token_address: Optional[str] = None,
-) -> PairDetails:
+    cutted: Optional[bool] = False,
+) -> PairDetails | PairDetailsCutted:
     """Get pair info for PancakeSwap, others.
 
     See also :py:class:`PairDetails`.
@@ -189,21 +221,33 @@ def fetch_pair_details(
         Automatically determine token order from addresses.
 
     """
-
     if base_token_address or quote_token_address:
         assert reverse_token_order is None, f"Give either (base_token_address, quote_token_address) or reverse_token_order"
         reverse_token_order = int(base_token_address, 16) > int(quote_token_address, 16)
 
-    pool = get_deployed_contract(web3, "sushi/UniswapV2Pair.json", pair_contact_address)
-    token0_address = pool.functions.token0().call()
-    token1_address = pool.functions.token1().call()
+    if not cutted:
+        pool = get_deployed_contract(web3, "sushi/UniswapV2Pair.json", pair_contact_address)
+        token0_address = pool.functions.token0().call()
+        token1_address = pool.functions.token1().call()
 
-    token0 = fetch_erc20_details(web3, token0_address)
-    token1 = fetch_erc20_details(web3, token1_address)
+        token0 = fetch_erc20_details(web3, token0_address)
+        token1 = fetch_erc20_details(web3, token1_address)
 
-    return PairDetails(
-        pool,
-        token0,
-        token1,
-        reverse_token_order=reverse_token_order,
-    )
+        return PairDetails(
+            pool,
+            token0,
+            token1,
+            reverse_token_order=reverse_token_order,
+        )
+    else:
+        pool = get_deployed_contract(web3, "sushi/UniswapV2Pair.json", pair_contact_address)
+        token0_address = pool.functions.token0().call()
+        token1_address = pool.functions.token1().call()
+
+        return PairDetailsCutted(
+            pool.address,
+            token0_address,
+            token1_address,
+            reverse_token_order=reverse_token_order,
+        )
+

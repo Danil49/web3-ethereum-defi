@@ -64,26 +64,57 @@ class PoolDetails:
             return self.token1
 
 
-def fetch_pool_details(web3, pool_contact_address: Union[str, HexAddress]) -> PoolDetails:
+@dataclass
+class PoolDetailsCutted:
+    """Uniswap v3 trading pool info, cutted version.
+    See :py:func:`fetch_pool_details` on how to construct.
+    """
+
+    #: Pool address
+    address: HexAddress
+
+    #: One pair of tokens
+    token0_address: HexAddress
+
+    #: One pair of tokens
+    token1_address: HexAddress
+
+    def __repr__(self):
+        return f"Pool {self.address} is {self.token0_address}-{self.token1_address}"
+
+
+def fetch_pool_details(web3, pool_contact_address: Union[str, HexAddress], cutted: Optional[bool] = False) -> PoolDetails | PoolDetailsCutted:
     """Resolve Uniswap v3 pool information."""
-    pool_contact_address = Web3.to_checksum_address(pool_contact_address)
-    pool = get_deployed_contract(web3, "uniswap_v3/UniswapV3Pool.json", pool_contact_address)
-    token0_address = pool.functions.token0().call()
-    token1_address = pool.functions.token1().call()
+    if not cutted:
+        pool_contact_address = Web3.to_checksum_address(pool_contact_address)
+        pool = get_deployed_contract(web3, "uniswap_v3/UniswapV3Pool.json", pool_contact_address)
+        token0_address = pool.functions.token0().call()
+        token1_address = pool.functions.token1().call()
 
-    token0 = fetch_erc20_details(web3, token0_address)
-    token1 = fetch_erc20_details(web3, token1_address)
+        token0 = fetch_erc20_details(web3, token0_address)
+        token1 = fetch_erc20_details(web3, token1_address)
 
-    raw_fee = pool.functions.fee().call()
+        raw_fee = pool.functions.fee().call()
 
-    return PoolDetails(
-        pool.address,
-        token0,
-        token1,
-        raw_fee,
-        raw_fee / 1_000_000,
-        pool,
-    )
+        return PoolDetails(
+            pool.address,
+            token0,
+            token1,
+            raw_fee,
+            raw_fee / 1_000_000,
+            pool,
+        )
+    else:
+        pool_contact_address = Web3.to_checksum_address(pool_contact_address)
+        pool = get_deployed_contract(web3, "uniswap_v3/UniswapV3Pool.json", pool_contact_address)
+        token0_address = pool.functions.token0().call()
+        token1_address = pool.functions.token1().call()
+
+        return PoolDetailsCutted(
+            pool.address,
+            token0_address,
+            token1_address,
+        )
 
 
 def get_raw_fee_from_pool_address(web3, pool_contract_address: HexAddress):
@@ -99,3 +130,6 @@ def get_raw_fee_from_pool_address(web3, pool_contract_address: HexAddress):
         Swap fee expressed as uint24"""
     pool = get_deployed_contract(web3, "uniswap_v3/UniswapV3Pool.json", pool_contract_address)
     return pool.functions.fee().call()
+
+
+
