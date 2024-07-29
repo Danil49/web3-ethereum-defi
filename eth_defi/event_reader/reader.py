@@ -20,6 +20,7 @@ from requests.adapters import HTTPAdapter
 from web3 import Web3
 from web3.contract.contract import ContractEvent
 from web3.datastructures import AttributeDict
+from web3.exceptions import TransactionNotFound
 
 from eth_defi.event_reader.filter import Filter
 from eth_defi.event_reader.logresult import LogContext, LogResult
@@ -325,7 +326,7 @@ def extract_events(
             if transaction_data:
                 try:
                     log["transaction_data"] = web3.eth.get_transaction(log["transactionHash"])
-                except web3.exceptions.TransactionNotFound as error:
+                except TransactionNotFound as error:
                     logger.error(error, exc_info=True, stack_info=True)
 
             yield log
