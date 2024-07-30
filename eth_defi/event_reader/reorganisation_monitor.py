@@ -364,12 +364,12 @@ class ReorganisationMonitor(ABC):
             del self.block_map[block_to_delete]
         self.last_block_read = latest_good_block
 
-    def truncate_all(self, blocks_count: int):
+    def truncate_all(self, remain_blocks_count: int):
         """Delete all data from buffer, except of the last blocks.
         :param blocks_count: Number of blocks to remain
         """
-        assert type(blocks_count) == int, f"Got: {blocks_count}"
-        blocks_to_delete = list(self.block_map.keys())[:-blocks_count]
+        assert type(remain_blocks_count) == int, f"Got: {remain_blocks_count}"
+        blocks_to_delete = list(self.block_map.keys())[:-remain_blocks_count]
         for block in blocks_to_delete:
             del self.block_map[block]
 
