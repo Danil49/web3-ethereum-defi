@@ -229,3 +229,22 @@ class AaveVersion(enum.Enum):
 # https://github.com/aave/aave-v3-core/blob/e0bfed13240adeb7f05cb6cbe5e7ce78657f0621/contracts/protocol/libraries/logic/SupplyLogic.sol#L123
 # 115792089237316195423570985008687907853269984665640564039457584007913129639935
 MAX_AMOUNT = 2**256 - 1
+
+# https://docs.aave.com/developers/deployed-contracts/v3-mainnet
+AAVE_V3_DEPLOYMENTS = {
+    "ethereum": {
+        "pool": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+        "data_provider": "0x7B4EB56E7CD4b454BA8ff71E4518426369a138a3",
+        "oracle": "0x54586bE62E3c3580375aE3723C145253060Ca0C2",
+    },
+    "arbitrum": {
+        "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+        "data_provider": "0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654",
+        "oracle": "0xb56c2F0B653B2e0b10C9b928C8580Ac5Df02C7C7",
+    },
+    "polygon": {
+        "pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+        "data_provider": "0x69FA688f1Dc47d4B5d8029D5a35FB7a548310654",
+        "oracle": "0xb023e699F5a33916Ea823A16485e259257cA8Bd1",
+    },
+}

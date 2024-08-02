@@ -8,26 +8,25 @@
 import datetime
 import logging
 import time
+from typing import Collection, Dict, List, Set, TypeAlias, Union, cast
+
 from _decimal import Decimal
-from typing import Dict, List, Set, Union, cast, Collection, TypeAlias
-
 from eth_account.datastructures import SignedTransaction
-from eth_typing import HexStr, Address
 
-from eth_defi.provider.anvil import mine
-from eth_defi.provider.named import get_provider_name
+
+from eth_defi.provider.anvil import is_anvil
 from hexbytes import HexBytes
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
-
-from eth_defi.hotwallet import SignedTransactionWithNonce
-from eth_defi.timestamp import get_latest_block_timestamp
-from eth_defi.tx import decode_signed_transaction
-from eth_defi.provider.fallback import FallbackProvider, get_fallback_provider
 from web3.providers import BaseProvider
 
+from eth_defi.hotwallet import SignedTransactionWithNonce
+from eth_defi.provider.anvil import mine
+from eth_defi.provider.fallback import FallbackProvider, get_fallback_provider
+from eth_defi.provider.named import get_provider_name
+from eth_defi.timestamp import get_latest_block_timestamp
+from eth_defi.tx import decode_signed_transaction
 from eth_defi.utils import to_unix_timestamp
-
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +195,7 @@ def wait_transactions_to_complete(
                     logger.warning(
                         "Timeout warning threshold %s reached when trying to confirm txs, still trying:\n%s",
                         node_switch_timeout,
-                        unconfirmed_txs
+                        unconfirmed_txs,
                     )
                 provider.switch_provider()
                 next_node_switch = datetime.datetime.utcnow() + node_switch_timeout
@@ -472,6 +471,7 @@ def wait_and_broadcast_multiple_nodes(
     node_switch_timeout=datetime.timedelta(minutes=3),
     check_nonce_validity=True,
     mine_blocks=False,
+    inter_node_delay=datetime.timedelta(seconds=60),
 ) -> Dict[HexBytes, dict]:
     """Try to broadcast transactions through multiple nodes.
 
@@ -508,6 +508,17 @@ def wait_and_broadcast_multiple_nodes(
         For forked mainnet RPCs (Anvil) make sure the blockchain is making blocks.
 
         Only use with Anvil.
+
+    :param inter_node_delay:
+        Work around bad JSON-RPC SaaS providers.
+
+        Sleep this time between multiple tx broadcasts.
+
+        See https://github.com/ethereum/go-ethereum/issues/26890
+
+        Problematic providers: Alchemy.
+
+        Reset for Anvil to make unit tests faster.
 
     :return:
         Map of transaction hashes -> receipt
@@ -546,6 +557,9 @@ def wait_and_broadcast_multiple_nodes(
     if web3.eth.chain_id == 61:
         assert confirmation_block_count == 0, "Ethereum Tester chain does not progress itself, so we cannot wait"
 
+    if is_anvil(web3):
+        inter_node_delay = datetime.timedelta(seconds=0.1)
+
     for tx in txs:
         assert getattr(tx, "hash", None), f"Does not look like compatible TxType: {tx.__class__}: {tx}"
 
@@ -556,11 +570,12 @@ def wait_and_broadcast_multiple_nodes(
     providers = provider.providers
 
     logger.info(
-        "Broadcasting %d transactions using %s to confirm in %d blocks, timeout is %s",
+        "Broadcasting %d transactions using %s to confirm in %d blocks, timeout is %s, inter node delay is %s",
         len(txs),
         ", ".join([get_provider_name(p) for p in providers]),
         confirmation_block_count,
         max_timeout,
+        inter_node_delay,
     )
 
     # Double check nonces before letting txs thru
@@ -596,6 +611,18 @@ def wait_and_broadcast_multiple_nodes(
             raise
         except Exception as e:
             last_exception = e
+
+        if len(txs) >= 2:
+            # https://github.com/ethereum/go-ethereum/issues/26890
+            logger.info(
+                "Broadcasting multiple transactions, using inter node delay %s to sleep to ensure poor-quality nodes like Alchemy work",
+                inter_node_delay
+            )
+            time.sleep(inter_node_delay.total_seconds())
+        else:
+            logger.info(
+                "Internode sleep skipped",
+            )
 
     while len(unconfirmed_txs) > 0:
         # Transaction hashes that receive confirmation on this round
