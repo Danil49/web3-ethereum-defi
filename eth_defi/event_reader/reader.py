@@ -276,10 +276,10 @@ def extract_events(
 
             # last block in range should be confirmed, but we check
             if len(log["transactionHash"]) == 0:
-                print("transactionHash is null because its pending log")
+                logger.warning("transactionHash is null because its pending log")
                 continue
             if log["removed"] is True:
-                print("removed is True, the log was removed, due to a chain reorganization")
+                logger.warning("removed is True, the log was removed, due to a chain reorganization")
                 continue
 
             if isinstance(log, AttributeDict):
