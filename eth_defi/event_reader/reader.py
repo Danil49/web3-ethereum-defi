@@ -10,7 +10,18 @@ For further reading see:
 
 import logging
 import threading
-from typing import Callable, Dict, Iterable, List, Optional, Protocol, Set, Any, TypeAlias, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Protocol,
+    Set,
+    TypeAlias,
+    Union,
+)
 
 import futureproof
 from eth_bloom import BloomFilter
@@ -22,13 +33,15 @@ from web3.contract.contract import ContractEvent
 from web3.datastructures import AttributeDict
 from web3.exceptions import TransactionNotFound
 
+from eth_defi.event_reader.conversion import convert_jsonrpc_value_to_int
 from eth_defi.event_reader.filter import Filter
 from eth_defi.event_reader.logresult import LogContext, LogResult
 from eth_defi.event_reader.reorganisation_monitor import ReorganisationMonitor
 from eth_defi.event_reader.web3factory import TunedWeb3Factory
-from eth_defi.event_reader.web3worker import get_worker_web3, create_thread_pool_executor
-from eth_defi.event_reader.conversion import convert_jsonrpc_value_to_int
-
+from eth_defi.event_reader.web3worker import (
+    create_thread_pool_executor,
+    get_worker_web3,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +213,7 @@ def extract_events(
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     reorg_mon: Optional[ReorganisationMonitor] = None,
     transaction_data: bool = False,
+    pools_length: int = 0,
 ) -> Iterable[LogResult]:
     """Perform eth_getLogs call over a block range.
 
@@ -255,7 +269,15 @@ def extract_events(
     # logging.info("Log range %d - %d", start_block, end_block)
 
     try:
-        logs = web3.manager.request_blocking("eth_getLogs", (filter_params,))
+        # Get logs by chunks to avoid node limits
+        if pools_length <= 0:
+            logs = web3.manager.request_blocking("eth_getLogs", (filter_params,))
+        else:
+            logs = []
+            for i in range(0, len(filter.contract_address), pools_length):
+                filter_params["address"] = filter.contract_address[i:i + pools_length]
+                logs.extend(web3.manager.request_blocking("eth_getLogs", (filter_params,)))
+
     except Exception as e:
         block_count = end_block - start_block
         raise ReadingLogsFailed(f"eth_getLogs failed for {start_block:,} - {end_block:,} (total {block_count:,} with filter {filter}") from e
@@ -339,6 +361,7 @@ def extract_events_concurrent(
     context: Optional[LogContext] = None,
     extract_timestamps: Optional[Callable] = extract_timestamps_json_rpc,
     transaction_data: bool = False,
+    pools_length: int = 0,
 ) -> List[LogResult]:
     """Concurrency happy event extractor.
 
@@ -352,7 +375,7 @@ def extract_events_concurrent(
     logger.debug("Starting block scan %d - %d at thread %d for %d different events", start_block, end_block, threading.get_ident(), len(filter.topics))
     web3 = get_worker_web3()
     assert web3 is not None
-    events = list(extract_events(web3, start_block, end_block, filter, context, extract_timestamps, transaction_data=transaction_data))
+    events = list(extract_events(web3, start_block, end_block, filter, context, extract_timestamps, transaction_data=transaction_data, pools_length=pools_length))
     return events
 
 
@@ -388,6 +411,7 @@ def read_events(
     filter: Optional[Filter] = None,
     reorg_mon: Optional[ReorganisationMonitor] = None,
     transaction_data: bool = False,
+    pools_length: int = 0,
 ) -> Iterable[LogResult]:
     """Reads multiple events from the blockchain.
 
@@ -554,6 +578,7 @@ def read_events(
             extract_timestamps,
             reorg_mon,
             transaction_data,
+            pools_length,
         ):
             last_timestamp = event.get("timestamp")
             total_events += 1
@@ -579,6 +604,7 @@ def read_events_concurrent(
     filter: Optional[Filter] = None,
     reorg_mon: Optional[ReorganisationMonitor] = None,
     transaction_data: bool = False,
+    pools_length: int = 0,
 ) -> Iterable[LogResult]:
     """Reads multiple events from the blockchain parallel using a thread pool for IO.
 
@@ -704,6 +730,7 @@ def read_events_concurrent(
             context,
             extract_timestamps,
             transaction_data,
+            pools_length,
         )
 
     # Run all tasks and handle backpressure. Task manager

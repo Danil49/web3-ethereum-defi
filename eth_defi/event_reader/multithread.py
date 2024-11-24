@@ -235,6 +235,7 @@ class MultithreadEventReader(Web3EventReader):
         filter: Optional[Filter] = None,
         extract_timestamps: Optional[Callable] = None,
         transaction_data: bool = False,
+        pools_length: int = 0,
     ) -> Iterable[LogResult]:
         """Wrap the underlying low-level function.
 
@@ -286,6 +287,7 @@ class MultithreadEventReader(Web3EventReader):
                 extract_timestamps=extract_timestamps,
                 chunk_size=self.max_blocks_once,
                 transaction_data=transaction_data,
+                pools_length=pools_length,
             )
 
         else:
@@ -301,6 +303,7 @@ class MultithreadEventReader(Web3EventReader):
                 extract_timestamps=extract_timestamps,
                 chunk_size=self.max_blocks_once,
                 transaction_data=transaction_data,
+                pools_length=pools_length,
             )
 
     def get_total_api_call_counts(self) -> Counter:
